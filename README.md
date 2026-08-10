@@ -2,7 +2,7 @@
 
 This project is a Lost & Found Management System built for the DBMS Mini Project.
 
-## 📁 Files Included
+##📁 Files Included
 - **app.py** – Python frontend/CLI for interacting with the database
 - **lost_found_portal.sql** – Complete SQL script containing:
   - Table creation (DDL)
