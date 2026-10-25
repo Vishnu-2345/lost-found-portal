@@ -10,6 +10,17 @@ jobs:
   build-and-test:
     runs-on: ubuntu-latest
 
+    # Spins up a completely isolated, live MySQL database container for the runner
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: lost_found_db
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
     steps:
     - name: Check out repository code
       uses: actions/checkout@v4
@@ -19,19 +30,29 @@ jobs:
       with:
         python-version: '3.10'
 
-    - name: Install dependencies
+    - name: Install system dependencies & python libraries
       run: |
         python -m pip install --upgrade pip
-        pip install flake8
+        pip install flake8 mysql-connector-python
 
     - name: Lint code for syntax errors
       run: |
-        # Stop the build if there are Python syntax errors or undefined names
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-        # Treat all other warnings as non-breaking errors
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
-    - name: Verify app runs safely
+    - name: Initialize SQL Database Schema
+      env:
+        MYSQL_PWD: rootpassword
       run: |
-        # Verifies that your script can compile and run syntactically without instantly crashing
+        # Injects your structural schema layout directly into the running MySQL service
+        mysql -h 127.0.0.1 -u root lost_found_db < lost_found_portal.sql
+
+    - name: Verify application runs against database
+      env:
+        DB_HOST: 127.0.0.1
+        DB_USER: root
+        DB_PASSWORD: rootpassword
+        DB_NAME: lost_found_db
+      run: |
+        # Ensures app.py can successfully communicate with the database schema
         python -m py_compile app.py
